@@ -7,7 +7,7 @@ from airflow.operators.python import PythonOperator
 
 # Add the project root to sys.path to allow importing from src
 # The project is now located within the Apache_Airflow directory
-PROJECT_ROOT = "/home/airflow-dev/Apache_Airflow/seoul-citydata"
+PROJECT_ROOT = "/opt/airflow/seoul-citydata"
 if PROJECT_ROOT not in sys.path:
     sys.path.append(PROJECT_ROOT)
 
