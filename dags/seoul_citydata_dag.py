@@ -51,7 +51,7 @@ with DAG(
     'seoul_citydata_collector',
     default_args=default_args,
     description='Collects Real-time Seoul City Data every 10 minutes',
-    schedule_interval='*/10 * * * *',  # Every 10 minutes
+    schedule='*/10 * * * *',  # Every 10 minutes
     start_date=datetime(2024, 1, 1),
     catchup=False,
     tags=['seoul', 'citydata'],
