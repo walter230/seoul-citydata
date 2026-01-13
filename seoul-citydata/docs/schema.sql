@@ -1,7 +1,10 @@
 -- Simplified Single Table Schema
 -- Optimized for Population (1-27) and Commercial (217-240) data only
+-- Created based on user request to simplify structure into a single table.
+
 BEGIN;
 
+-- Drop existing tables if they exist
 DROP TABLE IF EXISTS city_road_details, city_parking_details, city_subway_status, city_subway_fac, city_subway_ppltn, city_bus_status, city_accidents, city_ev_chargers, city_sbike, city_weather_alerts, city_weather_fcst, city_cultural_events, city_commercial_details, city_disaster_msgs, city_news, city_master;
 DROP TABLE IF EXISTS seoul_city_data;
 
@@ -42,7 +45,7 @@ CREATE TABLE seoul_city_data (
     fcst_ppltn_min INTEGER,
     fcst_ppltn_max INTEGER,
     
-    -- 217-240. 실시간 상권 현황
+    -- 217-240. 실시간 상권 현황 (업종별 상세 포함)
     live_cmrcl_stts VARCHAR(255),
     area_cmrcl_lvl VARCHAR(100),
     area_sh_payment_cnt NUMERIC,
