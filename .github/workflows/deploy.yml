@@ -20,19 +20,27 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: 22
           script: |
+            echo "Starting deployment..."
             # 1. 실제 Airflow 실행 폴더로 이동
-            cd ~/Apache_Airflow
+            cd ~/Apache_Airflow || { echo "Directory not found"; exit 1; }
             
-            # 2. 만약 해당 폴더가 git 레포가 아니라면 초기 설정 (이미 되어있을 확률이 높지만 안전을 위해)
+            # 2. 만약 해당 폴더가 git 레포가 아니라면 초기 설정
             if [ ! -d ".git" ]; then
-              git init
-              git remote add origin https://github.com/walter230/kdt-woongjin-2.git
+              echo "Initializing git repository..."
+              sudo git init
+              sudo git remote add origin https://github.com/walter230/seoul-citydata.git
             fi
             
             # 3. 최신 코드 가져오기 (main 브랜치 기준)
-            git fetch --all
-            git reset --hard origin/main
+            # URL이 변경되었을 수 있으므로 업데이트
+            sudo git remote set-url origin https://github.com/walter230/seoul-citydata.git
+            echo "Fetching latest changes..."
+            sudo git fetch --all
+            echo "Resetting to origin/main..."
+            sudo git reset --hard origin/main
             
             # 4. 권한 설정 (Docker Airflow 컨테이너가 쓸 수 있도록 UID 50000 권한 부여)
+            echo "Updating permissions..."
             sudo chown -R 50000:0 ~/Apache_Airflow
             sudo chmod -R 775 ~/Apache_Airflow
+            echo "Deployment successful!"
