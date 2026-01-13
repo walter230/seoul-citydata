@@ -32,15 +32,19 @@ jobs:
             fi
             
             # 3. 최신 코드 가져오기 (main 브랜치 기준)
-            # URL이 변경되었을 수 있으므로 업데이트
             sudo git remote set-url origin https://github.com/walter230/seoul-citydata.git
             echo "Fetching latest changes..."
             sudo git fetch --all
             echo "Resetting to origin/main..."
             sudo git reset --hard origin/main
             
-            # 4. 권한 설정 (Docker Airflow 컨테이너가 쓸 수 있도록 UID 50000 권한 부여)
+            # 4. 권한 설정
             echo "Updating permissions..."
             sudo chown -R 50000:0 ~/Apache_Airflow
             sudo chmod -R 775 ~/Apache_Airflow
+            
+            # 5. Docker 컨테이너 재시작 (설정 변경 적용)
+            echo "Restarting Docker containers..."
+            sudo docker compose up -d
+            
             echo "Deployment successful!"
