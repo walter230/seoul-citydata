@@ -26,20 +26,31 @@ class DBClient:
         return val
 
     def get_list(self, data: Any, key: str) -> List[Dict[str, Any]]:
+        """Safely extract a list of items from data, handling cases where data is a list itself"""
+        # If data is a list, take the first element (common in Seoul City API)
+        if isinstance(data, list) and len(data) > 0:
+            data = data[0]
+            
+        if not isinstance(data, dict):
+            return []
+            
         val = data.get(key)
         if isinstance(val, list): return val
         if isinstance(val, dict) and val: return [val]
         return []
 
     def get_first(self, data: Any, key: str) -> Dict[str, Any]:
+        """Safely extract the first item from a list or object"""
         lst = self.get_list(data, key)
         return lst[0] if lst else {}
 
     def transform_master(self, data: Dict[str, Any]) -> Dict[str, Any]:
         live_ppltn = self.get_first(data, "LIVE_PPLTN_STTS")
-        road_traffic = data.get("ROAD_TRAFFIC_STTS", {})
-        subway_obj = data.get("SUB_STTS", {})
-        bus_obj = data.get("BUS_STN_STTS", {})
+        
+        # Ensure sub-objects are dicts even if they come back as lists
+        road_traffic = self.get_first(data, "ROAD_TRAFFIC_STTS")
+        subway_obj = self.get_first(data, "SUB_STTS")
+        bus_obj = self.get_first(data, "BUS_STN_STTS")
         weather_info = self.get_first(data, "WEATHER_STTS")
         
         return {
@@ -124,31 +135,31 @@ class DBClient:
                     if filtered: self.supabase.table(table).insert(filtered).execute()
 
                 # Process all sub-lists
-                bulk_insert("city_road_details", self.get_list(data.get("ROAD_TRAFFIC_STTS", {}), "AVG_ROAD_DATA"),
+                bulk_insert("city_road_details", self.get_list(self.get_first(data, "ROAD_TRAFFIC_STTS"), "AVG_ROAD_DATA"),
                     lambda x: { "master_id": master_id, "link_id": x.get("LINK_ID"), "road_nm": x.get("ROAD_NM"), "start_nd_cd": x.get("START_ND_CD"), "start_nd_nm": x.get("START_ND_NM"), "start_nd_xy": x.get("START_ND_XY"), "end_nd_cd": x.get("END_ND_CD"), "end_nd_nm": x.get("END_ND_NM"), "end_nd_xy": x.get("END_ND_XY"), "dist": self.clean_val(x.get("DIST"), int), "spd": self.clean_val(x.get("SPD"), int), "idx": x.get("IDX"), "xylist": x.get("XYLIST") })
 
-                bulk_insert("city_parking_details", self.get_list(data.get("PRK_STTS", {}), "PRK_STTS"),
+                bulk_insert("city_parking_details", self.get_list(self.get_first(data, "PRK_STTS"), "PRK_STTS"),
                     lambda x: { "master_id": master_id, "prk_nm": x.get("PRK_NM"), "prk_cd": x.get("PRK_CD"), "prk_type": x.get("PRK_TYPE"), "cpcty": self.clean_val(x.get("CPCTY"), int), "cur_prk_cnt": self.clean_val(x.get("CUR_PRK_CNT"), int), "cur_prk_time": self.clean_val(x.get("CUR_PRK_TIME")), "cur_prk_yn": x.get("CUR_PRK_YN"), "pay_yn": x.get("PAY_YN"), "rates": x.get("RATES"), "time_rates": self.clean_val(x.get("TIME_RATES"), int), "add_rates": self.clean_val(x.get("ADD_RATES"), int), "add_time_rates": self.clean_val(x.get("ADD_TIME_RATES"), int), "road_addr": x.get("ROAD_ADDR"), "address": x.get("ADDRESS"), "lat": self.clean_val(x.get("LAT"), float), "lng": self.clean_val(x.get("LNG"), float) })
 
-                bulk_insert("city_subway_status", self.get_list(data.get("SUB_STTS", {}), "SUB_STTS"),
+                bulk_insert("city_subway_status", self.get_list(self.get_first(data, "SUB_STTS"), "SUB_STTS"),
                     lambda x: { "master_id": master_id, "sub_stn_nm": x.get("SUB_STN_NM"), "sub_stn_line": x.get("SUB_STN_LINE"), "sub_stn_raddr": x.get("SUB_STN_RADDR"), "sub_stn_jibun": x.get("SUB_STN_JIBUN"), "sub_stn_x": self.clean_val(x.get("SUB_STN_X"), float), "sub_stn_y": self.clean_val(x.get("SUB_STN_Y"), float), "sub_nt_stn": x.get("SUB_NT_STN"), "sub_bf_stn": x.get("SUB_BF_STN"), "sub_route_nm": x.get("SUB_ROUTE_NM"), "sub_line": x.get("SUB_LINE"), "sub_ord": self.clean_val(x.get("SUB_ORD"), int), "sub_dir": x.get("SUB_DIR"), "sub_terminal": x.get("SUB_TERMINAL"), "sub_arvtime": self.clean_val(x.get("SUB_ARVTIME")), "sub_armg1": x.get("SUB_ARMG1"), "sub_armg2": x.get("SUB_ARMG2"), "sub_arvinfo": x.get("SUB_ARVINFO") })
 
-                bulk_insert("city_subway_fac", self.get_list(data.get("SUB_STTS", {}), "SUB_FACINFO"),
+                bulk_insert("city_subway_fac", self.get_list(self.get_first(data, "SUB_STTS"), "SUB_FACINFO"),
                     lambda x: { "master_id": master_id, "elvtr_nm": x.get("ELVTR_NM"), "opr_sec": x.get("OPR_SEC"), "instl_pstn": x.get("INSTL_PSTN"), "use_yn": x.get("USE_YN"), "elvtr_se": x.get("ELVTR_SE") })
 
-                bulk_insert("city_subway_ppltn", self.get_list(data.get("SUB_STTS", {}), "LIVE_SUB_PPLTN"),
+                bulk_insert("city_subway_ppltn", self.get_list(self.get_first(data, "SUB_STTS"), "LIVE_SUB_PPLTN"),
                     lambda x: { "master_id": master_id, "sub_acml_gton_ppltn_min": self.clean_val(x.get("SUB_ACML_GTON_PPLTN_MIN"), int), "sub_acml_gton_ppltn_max": self.clean_val(x.get("SUB_ACML_GTON_PPLTN_MAX"), int), "sub_acml_gtoff_ppltn_min": self.clean_val(x.get("SUB_ACML_GTOFF_PPLTN_MIN"), int), "sub_acml_gtoff_ppltn_max": self.clean_val(x.get("SUB_ACML_GTOFF_PPLTN_MAX"), int), "sub_30wthn_gton_ppltn_min": self.clean_val(x.get("SUB_30WTHN_GTON_PPLTN_MIN"), int), "sub_30wthn_gton_ppltn_max": self.clean_val(x.get("SUB_30WTHN_GTON_PPLTN_MAX"), int), "sub_30wthn_gtoff_ppltn_min": self.clean_val(x.get("SUB_30WTHN_GTOFF_PPLTN_MIN"), int), "sub_30wthn_gtoff_ppltn_max": self.clean_val(x.get("SUB_30WTHN_GTOFF_PPLTN_MAX"), int), "sub_10wthn_gton_ppltn_min": self.clean_val(x.get("SUB_10WTHN_GTON_PPLTN_MIN"), int), "sub_10wthn_gton_ppltn_max": self.clean_val(x.get("SUB_10WTHN_GTON_PPLTN_MAX"), int), "sub_10wthn_gtoff_ppltn_min": self.clean_val(x.get("SUB_10WTHN_GTOFF_PPLTN_MIN"), int), "sub_10wthn_gtoff_ppltn_max": self.clean_val(x.get("SUB_10WTHN_GTOFF_PPLTN_MAX"), int), "sub_5wthn_gton_ppltn_min": self.clean_val(x.get("SUB_5WTHN_GTON_PPLTN_MIN"), int), "sub_5wthn_gton_ppltn_max": self.clean_val(x.get("SUB_5WTHN_GTON_PPLTN_MAX"), int), "sub_5wthn_gtoff_ppltn_min": self.clean_val(x.get("SUB_5WTHN_GTOFF_PPLTN_MIN"), int), "sub_5wthn_gtoff_ppltn_max": self.clean_val(x.get("SUB_5WTHN_GTOFF_PPLTN_MAX"), int) })
 
-                bulk_insert("city_bus_status", self.get_list(data.get("BUS_STN_STTS", {}), "BUS_STN_STTS"),
+                bulk_insert("city_bus_status", self.get_list(self.get_first(data, "BUS_STN_STTS"), "BUS_STN_STTS"),
                     lambda x: { "master_id": master_id, "bus_stn_id": x.get("BUS_STN_ID"), "bus_ars_id": x.get("BUS_ARS_ID"), "bus_stn_nm": x.get("BUS_STN_NM"), "bus_stn_x": self.clean_val(x.get("BUS_STN_X"), float), "bus_stn_y": self.clean_val(x.get("BUS_STN_Y"), float), "bus_acml_gton_ppltn_min": self.clean_val(x.get("BUS_ACML_GTON_PPLTN_MIN"), int), "bus_acml_gton_ppltn_max": self.clean_val(x.get("BUS_ACML_GTON_PPLTN_MAX"), int), "bus_acml_gtoff_ppltn_min": self.clean_val(x.get("BUS_ACML_GTOFF_PPLTN_MIN"), int), "bus_acml_gtoff_ppltn_max": self.clean_val(x.get("BUS_ACML_GTOFF_PPLTN_MAX"), int), "bus_30wthn_gton_ppltn_min": self.clean_val(x.get("BUS_30WTHN_GTON_PPLTN_MIN"), int), "bus_30wthn_gton_ppltn_max": self.clean_val(x.get("BUS_30WTHN_GTON_PPLTN_MAX"), int), "bus_30wthn_gtoff_ppltn_min": self.clean_val(x.get("BUS_30WTHN_GTOFF_PPLTN_MIN"), int), "bus_30wthn_gtoff_ppltn_max": self.clean_val(x.get("BUS_30WTHN_GTOFF_PPLTN_MAX"), int), "bus_10wthn_gton_ppltn_min": self.clean_val(x.get("BUS_10WTHN_GTON_PPLTN_MIN"), int), "bus_10wthn_gton_ppltn_max": self.clean_val(x.get("BUS_10WTHN_GTON_PPLTN_MAX"), int), "bus_10wthn_gtoff_ppltn_min": self.clean_val(x.get("BUS_10WTHN_GTOFF_PPLTN_MIN"), int), "bus_10wthn_gtoff_ppltn_max": self.clean_val(x.get("BUS_10WTHN_GTOFF_PPLTN_MAX"), int), "bus_5wthn_gton_ppltn_min": self.clean_val(x.get("BUS_5WTHN_GTON_PPLTN_MIN"), int), "bus_5wthn_gton_ppltn_max": self.clean_val(x.get("BUS_5WTHN_GTON_PPLTN_MAX"), int), "bus_5wthn_gtoff_ppltn_min": self.clean_val(x.get("BUS_5WTHN_GTOFF_PPLTN_MIN"), int), "bus_5wthn_gtoff_ppltn_max": self.clean_val(x.get("BUS_5WTHN_GTOFF_PPLTN_MAX"), int) })
 
-                bulk_insert("city_accidents", self.get_list(data.get("ACDNT_CNTRL_STTS", {}), "ACDNT_CNTRL_STTS"),
+                bulk_insert("city_accidents", self.get_list(self.get_first(data, "ACDNT_CNTRL_STTS"), "ACDNT_CNTRL_STTS"),
                     lambda x: { "master_id": master_id, "acdnt_occr_dt": self.clean_val(x.get("ACDNT_OCCR_DT")), "exp_clr_dt": self.clean_val(x.get("EXP_CLR_DT")), "acdnt_type": x.get("ACDNT_TYPE"), "acdnt_dtype": x.get("ACDNT_DTYPE"), "acdnt_info": x.get("ACDNT_INFO"), "acdnt_x": self.clean_val(x.get("ACDNT_X"), float), "acdnt_y": self.clean_val(x.get("ACDNT_Y"), float), "acdnt_time": self.clean_val(x.get("ACDNT_TIME")) })
 
-                bulk_insert("city_ev_chargers", self.get_list(data.get("CHARGER_STTS", {}), "CHARGER_STTS"),
+                bulk_insert("city_ev_chargers", self.get_list(self.get_first(data, "CHARGER_STTS"), "CHARGER_STTS"),
                     lambda x: { "master_id": master_id, "stat_nm": x.get("STAT_NM"), "stat_id": x.get("STAT_ID"), "stat_addr": x.get("STAT_ADDR"), "stat_x": self.clean_val(x.get("STAT_X"), float), "stat_y": self.clean_val(x.get("STAT_Y"), float), "stat_usetime": x.get("STAT_USETIME"), "stat_parkpay": x.get("STAT_PARKPAY"), "stat_limityn": x.get("STAT_LIMITYN"), "stat_limitdetail": x.get("STAT_LIMITDETAIL"), "stat_kinddetail": x.get("STAT_KINDDETAIL"), "charger_id": x.get("CHARGER_ID"), "charger_type": x.get("CHARGER_TYPE"), "charger_stat": x.get("CHARGER_STAT"), "statupddt": self.clean_val(x.get("STATUPDDT")), "lasttsdt": self.clean_val(x.get("LASTTSDT")), "lasttedt": self.clean_val(x.get("LASTTEDT")), "nowtsdt": self.clean_val(x.get("NOWTSDT")), "output": self.clean_val(x.get("OUTPUT"), float), "method": x.get("METHOD") })
 
-                bulk_insert("city_sbike", self.get_list(data.get("SBIKE_STTS", {}), "SBIKE_STTS"),
+                bulk_insert("city_sbike", self.get_list(self.get_first(data, "SBIKE_STTS"), "SBIKE_STTS"),
                     lambda x: { "master_id": master_id, "sbike_spot_nm": x.get("SBIKE_SPOT_NM"), "sbike_spot_id": x.get("SBIKE_SPOT_ID"), "sbike_shared": self.clean_val(x.get("SBIKE_SHARED"), float), "sbike_parking_cnt": self.clean_val(x.get("SBIKE_PARKING_CNT"), int), "sbike_rack_cnt": self.clean_val(x.get("SBIKE_RACK_CNT"), int), "sbike_x": self.clean_val(x.get("SBIKE_X"), float), "sbike_y": self.clean_val(x.get("SBIKE_Y"), float) })
 
                 bulk_insert("city_weather_alerts", self.get_list(self.get_first(data, "WEATHER_STTS"), "NEWS_LIST"),
