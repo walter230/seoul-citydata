@@ -27,9 +27,9 @@ class DBClient:
         data = raw_data['CITYDATA']
         
         # Helper to safely get value or None
-        def get_val(key, cast_func=None):
-            val = data.get(key)
-            if val == '' or val is None:
+        def clean_val(val, cast_func=None):
+            pass
+            if val is None or str(val).strip() in ['', '-', 'None']:
                 return None
             if cast_func:
                 try:
@@ -55,17 +55,17 @@ class DBClient:
         # Construct payload
         payload = {
             # Common
-            'area_nm': get_val('AREA_NM'),
-            'area_cd': get_val('AREA_CD'),
+            'area_nm': clean_val('AREA_NM'),
+            'area_cd': clean_val('AREA_CD'),
             
             # Live Population
             'live_ppltn_stts': live_ppltn.get('LIVE_PPLTN_STTS'),
             'area_congest_lvl': live_ppltn.get('AREA_CONGEST_LVL'),
             'area_congest_msg': live_ppltn.get('AREA_CONGEST_MSG'),
-            'area_ppltn_min': get_val('AREA_PPLTN_MIN', int) or live_ppltn.get('AREA_PPLTN_MIN'), # sometimes duplicated
-            'area_ppltn_max': get_val('AREA_PPLTN_MAX', int),
-            'male_ppltn_rate': get_val('MALE_PPLTN_RATE', float),
-            'female_ppltn_rate': get_val('FEMALE_PPLTN_RATE', float),
+            'area_ppltn_min': clean_val('AREA_PPLTN_MIN', int) or live_ppltn.get('AREA_PPLTN_MIN'), # sometimes duplicated
+            'area_ppltn_max': clean_val('AREA_PPLTN_MAX', int),
+            'male_ppltn_rate': clean_val('MALE_PPLTN_RATE', float),
+            'female_ppltn_rate': clean_val('FEMALE_PPLTN_RATE', float),
             # ... Add other population rates as needed (omitted for brevity but can be added)
             'ppltn_time': live_ppltn.get('PPLTN_TIME'),
             
