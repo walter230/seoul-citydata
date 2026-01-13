@@ -15,7 +15,7 @@ jobs:
       - name: Deploy to VM via SSH
         uses: appleboy/ssh-action@master
         with:
-          host: 136.118.197.91
+          host: 34.187.239.89
           username: airflow-dev
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: 22
