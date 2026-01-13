@@ -62,7 +62,7 @@ class DBClient:
         try:
             filtered_payload = {k: v for k, v in payload.items() if v is not None}
             data, count = self.supabase.table(self.table_name).insert(filtered_payload).execute()
-            logger.info(f"Successfully inserted data for {filtered_payload.get(\x27area_nm\x27)}")
+            logger.info(f"Successfully inserted data for {filtered_payload.get('area_nm')}")
             return data
         except Exception as e:
             logger.error(f"Error inserting data into Supabase: {e}")
