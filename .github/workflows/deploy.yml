@@ -20,9 +20,14 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: 22
           script: |
+            set -ex
             echo "Starting deployment..."
+            
             # 1. 실제 Airflow 실행 폴더로 이동
             cd ~/Apache_Airflow || { echo "Directory not found"; exit 1; }
+            
+            # Git lock 파일 정리 (혹시 남아있을 경우 대비)
+            sudo rm -f .git/index.lock
             
             # 2. 만약 해당 폴더가 git 레포가 아니라면 초기 설정
             if [ ! -d ".git" ]; then
@@ -31,20 +36,24 @@ jobs:
               sudo git remote add origin https://github.com/walter230/seoul-citydata.git
             fi
             
-            # 3. 최신 코드 가져오기 (main 브랜치 기준)
+            # 3. 최신 코드 가져오기
+            # URL 동기화 (최신 리포지토리 주소로)
             sudo git remote set-url origin https://github.com/walter230/seoul-citydata.git
+            
             echo "Fetching latest changes..."
-            sudo git fetch --all
+            sudo git fetch origin main
+            
             echo "Resetting to origin/main..."
             sudo git reset --hard origin/main
             
-            # 4. 권한 설정
+            # 4. 권한 설정 (Docker Airflow가 읽고 쓸 수 있도록)
             echo "Updating permissions..."
             sudo chown -R 50000:0 ~/Apache_Airflow
             sudo chmod -R 775 ~/Apache_Airflow
             
-            # 5. Docker 컨테이너 재시작 (설정 변경 적용)
+            # 5. Docker 컨테이너 상태 확인 및 재시작 (설정 변경 적용)
             echo "Restarting Docker containers..."
+            # docker-compose.yaml 변경사항 확인을 위해 up -d 실행
             sudo docker compose up -d
             
             echo "Deployment successful!"
