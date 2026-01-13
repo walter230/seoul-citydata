@@ -1,4 +1,5 @@
 -- Simplified Single Table Schema
+-- Optimized for Population (1-27) and Commercial (217-240) data only
 BEGIN;
 
 DROP TABLE IF EXISTS city_road_details, city_parking_details, city_subway_status, city_subway_fac, city_subway_ppltn, city_bus_status, city_accidents, city_ev_chargers, city_sbike, city_weather_alerts, city_weather_fcst, city_cultural_events, city_commercial_details, city_disaster_msgs, city_news, city_master;

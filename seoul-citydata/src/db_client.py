@@ -6,7 +6,7 @@ from .config import Config
 logger = logging.getLogger(__name__)
 
 class DBClient:
-    """Simplified Client for interacting with Supabase - Single Table version"""
+    """Simplified Client for interacting with Supabase - Single Table version (Population & Commercial Only)"""
     
     def __init__(self):
         Config.validate()
@@ -25,6 +25,7 @@ class DBClient:
         return val
 
     def get_list(self, data: Any, key: str) -> List[Dict[str, Any]]:
+        # Handle the case where the parent node might be a list
         if isinstance(data, list) and len(data) > 0:
             data = data[0]
         if not isinstance(data, dict):
@@ -39,7 +40,7 @@ class DBClient:
         return lst[0] if lst else {}
 
     def extract_area_data(self, data: Dict[str, Any]) -> Dict[str, Any]:
-        """Extract only fields 1-27 from the raw data"""
+        """Extract population fields (1-27)"""
         live_ppltn = self.get_first(data, "LIVE_PPLTN_STTS")
         
         return {
@@ -80,17 +81,17 @@ class DBClient:
                 if "CITYDATA" not in raw_data: continue
                 data = raw_data["CITYDATA"]
                 
-                # Base area data (1-27)
+                # Extract Population Data (1-27)
                 base_info = self.extract_area_data(data)
                 
-                # Commercial list (217-240)
+                # Extract Commercial Data (217-240)
                 cmrcl_list = self.get_list(data, "LIVE_CMRCL_STTS")
                 
                 if not cmrcl_list:
-                    # If no commercial data, save one row with pop data only
+                    # Save at least the population data if no commercial data
                     all_payloads.append(base_info)
                 else:
-                    # Flatten: One row per industry record
+                    # Flatten: One row per industry (rsb) record
                     for item in cmrcl_list:
                         payload = base_info.copy()
                         payload.update({
@@ -125,12 +126,11 @@ class DBClient:
                 logger.error(f"Failed to process area {area}: {e}")
                 continue
 
-        # Bulk insert to Supabase
+        # Bulk insert to Supabase seoul_city_data table
         if all_payloads:
             try:
-                # Filter out None values to allow DB defaults
                 cleaned_payloads = [{k: v for k, v in p.items() if v is not None} for p in all_payloads]
-                # Split into chunks of 100 to avoid request size limits
+                # Split into chunks of 100
                 for i in range(0, len(cleaned_payloads), 100):
                     self.supabase.table("seoul_city_data").insert(cleaned_payloads[i:i+100]).execute()
                 logger.info(f"Successfully saved {len(cleaned_payloads)} records to seoul_city_data")
