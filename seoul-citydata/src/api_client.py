@@ -6,7 +6,7 @@ from urllib.parse import quote
 from .config import Config
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 class CityDataAPIClient:
@@ -22,7 +22,7 @@ class CityDataAPIClient:
         Fetch real-time data for a specific area.
         
         Args:
-            area_name (str): Name of the area (e.g., '광화문·덕수궁')
+            area_name (str): Name of the area (e.g., "강남역")
             
         Returns:
             dict: Parsed JSON data or None if failed
@@ -31,37 +31,15 @@ class CityDataAPIClient:
             # URL Encoding for the area name
             encoded_area_name = quote(area_name)
             
-            # Construct URL: http://openapi.seoul.go.kr:8088/(key)/xml/citydata/1/5/(area_name)
-            # Using Type=xml as per request initially, but json is usually easier to handle in Python.
-            # However, the user request specifically said "TYPE: xml : xml".
-            # But recent Seoul API often supports JSON if we change the type to 'json'.
-            # Let's try to use JSON for easier parsing if supported, otherwise XML parsing is needed.
-            # The URL example provided: http://openapi.seoul.go.kr:8088/sample/xml/citydata/1/5/...
-            # Let's check if 'json' works or if we must use XML.
-            # Usually Seoul Open API supports both. I will use 'json' for convenience in Python.
-            # If the user strictly demanded XML parsing, I would use handling for that, 
-            # but usually the Goal is "Load Data", so JSON is safer for implementation unless strict constraint.
-            # Request says "TYPE String(필수) 요청파일타입 xml : xml".
-            # I will use 'json' to get JSON response for easier processing in Python.
-            
-            url = f"{self.base_url}/{self.api_key}/json/citydata/1/5/{encoded_area_name}"
+            # Construct URL: http://openapi.seoul.go.kr:8088/(key)/json/citydata/1/100/(area_name)
+            # Using JSON for easier parsing in Python.
+            # Updated range to 1/100 as per user request for better data coverage.
+            url = f"{self.base_url}/{self.api_key}/json/citydata/1/100/{encoded_area_name}"
             
             response = requests.get(url)
             response.raise_for_status()
             
             data = response.json()
-            
-            # Validate response code
-            if 'CITYDATA' in data:
-                 result_code = data.get('CITYDATA', {}).get('RESULT.CODE')
-                 if result_code != 'INFO-000':
-                      # Sometimes it is not INFO-000? Let's check typical success.
-                      # Actually Seoul API usually wraps in the service name.
-                      pass
-            
-            # The structure for 'citydata' service usually returns key 'CITYDATA' at root?
-            # Let's inspect the structure from typical response.
-            # Structure usually: { "CITYDATA": { "list_total_count": ..., "RESULT": {...}, "AREA_NM": ... } }
             
             logger.info(f"Successfully fetched data for {area_name}")
             return data
