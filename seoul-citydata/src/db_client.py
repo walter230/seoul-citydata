@@ -18,7 +18,7 @@ class DBClient:
         if cast_func:
             try:
                 if cast_func in [float, int] and isinstance(val, str):
-                    val = val.replace(',', '').replace('건', '').replace('원', '')
+                    val = val.replace(",", "").replace("건", "").replace("원", "")
                 return cast_func(val)
             except (ValueError, TypeError):
                 return None
@@ -81,44 +81,50 @@ class DBClient:
                 if "CITYDATA" not in raw_data: continue
                 data = raw_data["CITYDATA"]
                 
-                # Extract Population Data (1-27)
+                # 1. Extract Population Data (Base)
                 base_info = self.extract_area_data(data)
                 
-                # Extract Commercial Data (217-240)
-                cmrcl_list = self.get_list(data, "LIVE_CMRCL_STTS")
+                # 2. Extract Commercial Data (Summary)
+                cmrcl_stts = self.get_first(data, "LIVE_CMRCL_STTS")
                 
-                if not cmrcl_list:
-                    # Save at least the population data if no commercial data
-                    all_payloads.append(base_info)
+                # 3. Extract Industry Specific Data (List)
+                rsb_list = self.get_list(cmrcl_stts, "CMRCL_RSB")
+                
+                cmrcl_summary = {
+                    "area_cmrcl_lvl": self.clean_val(cmrcl_stts.get("AREA_CMRCL_LVL")),
+                    "area_sh_payment_cnt": self.clean_val(cmrcl_stts.get("AREA_SH_PAYMENT_CNT"), float),
+                    "area_sh_payment_amt_min": self.clean_val(cmrcl_stts.get("AREA_SH_PAYMENT_AMT_MIN"), float),
+                    "area_sh_payment_amt_max": self.clean_val(cmrcl_stts.get("AREA_SH_PAYMENT_AMT_MAX"), float),
+                    "cmrcl_male_rate": self.clean_val(cmrcl_stts.get("CMRCL_MALE_RATE"), float),
+                    "cmrcl_female_rate": self.clean_val(cmrcl_stts.get("CMRCL_FEMALE_RATE"), float),
+                    "cmrcl_10_rate": self.clean_val(cmrcl_stts.get("CMRCL_10_RATE"), float),
+                    "cmrcl_20_rate": self.clean_val(cmrcl_stts.get("CMRCL_20_RATE"), float),
+                    "cmrcl_30_rate": self.clean_val(cmrcl_stts.get("CMRCL_30_RATE"), float),
+                    "cmrcl_40_rate": self.clean_val(cmrcl_stts.get("CMRCL_40_RATE"), float),
+                    "cmrcl_50_rate": self.clean_val(cmrcl_stts.get("CMRCL_50_RATE"), float),
+                    "cmrcl_60_rate": self.clean_val(cmrcl_stts.get("CMRCL_60_RATE"), float),
+                    "cmrcl_personal_rate": self.clean_val(cmrcl_stts.get("CMRCL_PERSONAL_RATE"), float),
+                    "cmrcl_corporation_rate": self.clean_val(cmrcl_stts.get("CMRCL_CORPORATION_RATE"), float),
+                    "cmrcl_time": self.clean_val(cmrcl_stts.get("CMRCL_TIME")),
+                }
+                
+                if not rsb_list:
+                    payload = base_info.copy()
+                    payload.update(cmrcl_summary)
+                    all_payloads.append(payload)
                 else:
-                    # Flatten: One row per industry (rsb) record
-                    for item in cmrcl_list:
+                    for rsb in rsb_list:
                         payload = base_info.copy()
+                        payload.update(cmrcl_summary)
                         payload.update({
-                            "live_cmrcl_stts": self.clean_val(item.get("LIVE_CMRCL_STTS")),
-                            "area_cmrcl_lvl": self.clean_val(item.get("AREA_CMRCL_LVL")),
-                            "area_sh_payment_cnt": self.clean_val(item.get("AREA_SH_PAYMENT_CNT"), float),
-                            "area_sh_payment_amt_min": self.clean_val(item.get("AREA_SH_PAYMENT_AMT_MIN"), float),
-                            "area_sh_payment_amt_max": self.clean_val(item.get("AREA_SH_PAYMENT_AMT_MAX"), float),
-                            "rsb_lrg_ctgr": self.clean_val(item.get("RSB_LRG_CTGR")),
-                            "rsb_mid_ctgr": self.clean_val(item.get("RSB_MID_CTGR")),
-                            "rsb_payment_lvl": self.clean_val(item.get("RSB_PAYMENT_LVL")),
-                            "rsb_sh_payment_cnt": self.clean_val(item.get("RSB_SH_PAYMENT_CNT"), float),
-                            "rsb_sh_payment_amt_min": self.clean_val(item.get("RSB_SH_PAYMENT_AMT_MIN"), float),
-                            "rsb_sh_payment_amt_max": self.clean_val(item.get("RSB_SH_PAYMENT_AMT_MAX"), float),
-                            "rsb_mct_cnt": self.clean_val(item.get("RSB_MCT_CNT"), int),
-                            "rsb_mct_time": self.clean_val(item.get("RSB_MCT_TIME")),
-                            "cmrcl_male_rate": self.clean_val(item.get("CMRCL_MALE_RATE"), float),
-                            "cmrcl_female_rate": self.clean_val(item.get("CMRCL_FEMALE_RATE"), float),
-                            "cmrcl_10_rate": self.clean_val(item.get("CMRCL_10_RATE"), float),
-                            "cmrcl_20_rate": self.clean_val(item.get("CMRCL_20_RATE"), float),
-                            "cmrcl_30_rate": self.clean_val(item.get("CMRCL_30_RATE"), float),
-                            "cmrcl_40_rate": self.clean_val(item.get("CMRCL_40_RATE"), float),
-                            "cmrcl_50_rate": self.clean_val(item.get("CMRCL_50_RATE"), float),
-                            "cmrcl_60_rate": self.clean_val(item.get("CMRCL_60_RATE"), float),
-                            "cmrcl_personal_rate": self.clean_val(item.get("CMRCL_PERSONAL_RATE"), float),
-                            "cmrcl_corporation_rate": self.clean_val(item.get("CMRCL_CORPORATION_RATE"), float),
-                            "cmrcl_time": self.clean_val(item.get("CMRCL_TIME")),
+                            "rsb_lrg_ctgr": self.clean_val(rsb.get("RSB_LRG_CTGR")),
+                            "rsb_mid_ctgr": self.clean_val(rsb.get("RSB_MID_CTGR")),
+                            "rsb_payment_lvl": self.clean_val(rsb.get("RSB_PAYMENT_LVL")),
+                            "rsb_sh_payment_cnt": self.clean_val(rsb.get("RSB_SH_PAYMENT_CNT"), float),
+                            "rsb_sh_payment_amt_min": self.clean_val(rsb.get("RSB_SH_PAYMENT_AMT_MIN"), float),
+                            "rsb_sh_payment_amt_max": self.clean_val(rsb.get("RSB_SH_PAYMENT_AMT_MAX"), float),
+                            "rsb_mct_cnt": self.clean_val(rsb.get("RSB_MCT_CNT"), int),
+                            "rsb_mct_time": self.clean_val(rsb.get("RSB_MCT_TIME")),
                         })
                         all_payloads.append(payload)
                         
@@ -126,13 +132,11 @@ class DBClient:
                 logger.error(f"Failed to process area {area}: {e}")
                 continue
 
-        # Bulk insert to Supabase seoul_city_data table
         if all_payloads:
             try:
                 cleaned_payloads = [{k: v for k, v in p.items() if v is not None} for p in all_payloads]
-                # Split into chunks of 100
                 for i in range(0, len(cleaned_payloads), 100):
                     self.supabase.table("seoul_city_data").insert(cleaned_payloads[i:i+100]).execute()
-                logger.info(f"Successfully saved {len(cleaned_payloads)} records to seoul_city_data")
+                logger.info(f"Successfully saved {len(cleaned_payloads)} records")
             except Exception as e:
                 logger.error(f"Database insert failed: {e}")
